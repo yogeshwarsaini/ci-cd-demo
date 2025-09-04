@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
@@ -24,3 +24,24 @@ jobs:
         run: |
           node -e "console.log('✅ App build successful!')"
 
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Deploy to EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
+            cd ~/app || mkdir ~/app && cd ~/app &&
+            git clone https://github.com/${{ github.repository }} . || git pull &&
+            npm install &&
+            pm2 start index.js --name myapp || pm2 restart myapp
+          "
